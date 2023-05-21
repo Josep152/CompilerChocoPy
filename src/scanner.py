@@ -1,4 +1,5 @@
 import chocoToken
+import pyfiglet
 import sys
 sys.path.append('../')
 from lib import dictionary as dic
@@ -13,6 +14,8 @@ class Scanner:
         self.spaces = 0
         self.errors = 0
         self.end_doc = False
+        self.tokens=[]
+        print(pyfiglet.figlet_format("SCANNER", font = "slant"))
 
     def open_file(self, file_name):     #Open the file and counts how many lines has
         self.file=open("../test/"+file_name,"r")
@@ -41,6 +44,7 @@ class Scanner:
                 else:
                     cur_token.set_info(self.cur_word,"ID",self.idx_line,self.idx_char)
                 cur_token.print_token()
+                self.tokens.append(cur_token)
 
             elif self.cur_char.isdecimal():
                 self.cur_word+=self.cur_char
@@ -50,6 +54,7 @@ class Scanner:
                     cur_token.set_info(self.cur_word,"INTEGER",self.idx_line,self.idx_char)
                     self.token_in_line = True
                     cur_token.print_token()
+                    self.tokens.append(cur_token)
                 else:
                     while next_char!= False and (next_char.isalpha() or next_char.isdecimal()):
                         next_char = self.step_up()
@@ -60,24 +65,12 @@ class Scanner:
             #Then we create tockens and identify them
             elif dic.operators.get(acumulate) or dic.bin_op.get(acumulate):
                 self.cur_word = acumulate
-
-                if dic.operators.get(self.cur_word) != None:
-                    cur_token.set_info(self.cur_word,"OPERATOR",self.idx_line,self.idx_char)
-                elif dic.bin_op.get(self.cur_word) != None:
-                    cur_token.set_info(self.cur_word,"BIN OPERATOR",self.idx_line,self.idx_char)
-                self.token_in_line = True
+                self.operator_token(cur_token)
                 self.get_char()
-                cur_token.print_token()
             
             elif dic.operators.get(self.cur_char) or dic.bin_op.get(self.cur_char):
                 self.cur_word = self.cur_char
-
-                if dic.operators.get(self.cur_word) != None:
-                    cur_token.set_info(self.cur_word,"OPERATOR",self.idx_line,self.idx_char)
-                elif dic.bin_op.get(self.cur_word) != None:
-                    cur_token.set_info(self.cur_word,"BIN OPERATOR",self.idx_line,self.idx_char)
-                self.token_in_line = True
-                cur_token.print_token()
+                self.operator_token(cur_token)
             
             elif self.cur_char == "\"" or self.cur_char == "\'":
                 self.cur_word += self.cur_char
@@ -94,6 +87,7 @@ class Scanner:
                     cur_token.set_info(self.cur_word,"STRING",self.idx_line,self.idx_char)
                     self.token_in_line = True
                     cur_token.print_token()
+                    self.tokens.append(cur_token)
                 if error:
                     while next_char!= False and next_char!=" " and next_char!="\n":
                         next_char = self.step_up()
@@ -142,6 +136,7 @@ class Scanner:
             literal = chocoToken.Token()
             literal.set_info("NEWLINE","LITERAL",self.idx_line,self.idx_char)
             literal.print_token()
+            self.tokens.append(literal)
             self.token_in_line = False
 
         if self.total_lines-1 > self.idx_line:
@@ -156,6 +151,15 @@ class Scanner:
             self.end_doc = True
         return jump
     
+    def operator_token(self,cur_token):
+        if dic.operators.get(self.cur_word) != None:
+            cur_token.set_info(self.cur_word,"OPERATOR",self.idx_line,self.idx_char)
+        elif dic.bin_op.get(self.cur_word) != None:
+            cur_token.set_info(self.cur_word,"BIN OPERATOR",self.idx_line,self.idx_char)
+        self.token_in_line = True
+        cur_token.print_token()
+        self.tokens.append(cur_token)
+
     def indent_dedent(self):
         space_test = 0              #We'll save the amount of spaces the new line have until it reach a char
         while self.lines[self.idx_line][self.idx_char] == ' ':
@@ -170,7 +174,8 @@ class Scanner:
                         cur_token.set_info("","INDENT",self.idx_line,self.idx_char)                                 #more than one functions is closed  
                     else:                                                                                           #that's the reason why we need to 
                         cur_token.set_info("","DEDENT",self.idx_line,self.idx_char)                                 #make it a loop
-                    cur_token.print_token()                                                                     
+                    cur_token.print_token()    
+                    self.tokens.append(cur_token)                                                                 
                 self.spaces = space_test
 
     def print_error(self):   #We print errors aligned
@@ -184,4 +189,4 @@ class Scanner:
     def __del__(self):
         if self.file != None:
             self.file.close()
-        print("INFO SCAN COMPLETED WITH ", self.errors, "ERRORS")
+        print("INFO SCAN COMPLETED WITH", self.errors, "ERRORS")
